@@ -11,6 +11,8 @@ import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.seattlesolvers.solverslib.util.MathUtils.normalizeAngle;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.min;
+import static java.lang.Math.toRadians;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
@@ -70,7 +72,7 @@ public class Robot {
     public Pose redHpz = new Pose(10.5, 10.5, 0);
     double forwardInput, rightInput, rotateInput = 0;
     public boolean isShooting = false;
-    public boolean slowDrive = false;
+    public boolean slowDrive = true;
     public static double headingKP = 0.02;
     public static double headingKI = 0;
     public static double headingKD = 0.02;
@@ -331,7 +333,7 @@ public class Robot {
             limelight.setPipeline(0);
         } else {
             goalPose = redGoal.mirror();
-            hpz = redHpz.mirror();
+            hpz = redHpz;//!.mirror();
             limelight.setPipeline(1);
         }
         follower.update();
@@ -358,7 +360,8 @@ public class Robot {
 
         limelight.update();
 
-        shooter.update(getDistToGoal());
+//        shooter.update(getDistToGoal());
+        shooter.runWithPIDF(0);
 
         beamBreaks.updatePrism(isShooting, autoAiming);
 
@@ -368,11 +371,7 @@ public class Robot {
             rightInput = -right;
             rotateInput = -clockwise;
 
-        if (slowDrive) {
-            forwardInput *= 0.2;
-            rightInput *= 0.2;
-            rotateInput *= 0.2;
-        }
+        drive(-forward, -right, -clockwise);
     }
 
     public double getRealAngleToGoalDeg(){
@@ -444,6 +443,134 @@ public class Robot {
         p_previous = p;
         return new Pose();
     }
+
+    public Pose[] getRobotCorners(Pose robotPose) {
+        double half = 9.0; // half of 18 inches
+        double x = robotPose.getX();
+        double y = robotPose.getY();
+        double heading = robotPose.getHeading();
+
+        // Corners relative to center, in robot-local frame (x forward, y left)
+        double[][] localCorners = {
+                { half,  half}, // front-left
+                { half, -half}, // front-right
+                {-half, -half}, // back-right
+                {-half,  half}  // back-left
+        };
+
+        Pose[] corners = new Pose[4];
+        double cos = Math.cos(heading);
+        double sin = Math.sin(heading);
+
+        for (int i = 0; i < 4; i++) {
+            double lx = localCorners[i][0];
+            double ly = localCorners[i][1];
+
+            // Rotate local offset into field frame
+            double fieldX = x + (lx * cos - ly * sin);
+            double fieldY = y + (lx * sin + ly * cos);
+
+            corners[i] = new Pose(fieldX, fieldY, heading);
+        }
+        return corners;
+    }
+
+    public Vector getFieldRelativeMovement(double forward, double strafe, double heading) {
+        double cos = Math.cos(heading);
+        double sin = Math.sin(heading);
+
+        double fieldX = forward * cos - strafe * sin;
+        double fieldY = forward * sin + strafe * cos;
+
+        Vector movement = new Vector();
+        movement.setOrthogonalComponents(fieldX, fieldY);
+        return movement;
+    }
+
+    public Vector getRobotRelativeMovement(Vector fieldMovement, double heading) {
+        double fieldX = fieldMovement.getXComponent();
+        double fieldY = fieldMovement.getYComponent();
+
+        double cos = Math.cos(heading);
+        double sin = Math.sin(heading);
+
+        // Inverse rotation (rotate by -heading)
+        double localForward = fieldX * cos + fieldY * sin;
+        double localStrafe  = -fieldX * sin + fieldY * cos;
+
+        Vector local = new Vector();
+        local.setOrthogonalComponents(localForward, localStrafe);
+        return local;
+    }
+
+    public void drive(double forward, double strafe,  double turn){
+        Pose botPose = follower.getPose();
+        if (false) {
+            forward *= 0.2;
+            strafe *= 0.2;
+            turn *= 0.2;
+        }
+        Pose[] corners = getRobotCorners(botPose);
+        if (isCloseToBump(botPose)) {
+            Vector movement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
+            double x = movement.getXComponent();
+            double y = movement.getYComponent();
+
+            Pose corner = getClosestCorner(botPose);
+            if ((corner.getX() > (BUMP_MIN_X - MARGIN)) && (corner.getX() < BUMP_MIN_X)){
+                x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.08), x);
+            } else if (corner.getX() < (BUMP_MAX_X + MARGIN) && corner.getX() > BUMP_MAX_X) {
+                x = 1;
+            }
+            if (corner.getY() > (BUMP_MIN_Y - MARGIN) && corner.getY() < BUMP_MIN_Y){
+                y = -1;
+            } else if (corner.getY() < (BUMP_MAX_Y + MARGIN) && corner.getY() > BUMP_MAX_Y) {
+                y = 1;
+            }
+            movement.setOrthogonalComponents(x, y);
+            forward = getRobotRelativeMovement(movement, botPose.getHeading()).getXComponent();
+            strafe = getRobotRelativeMovement(movement, botPose.getHeading()).getYComponent();
+        }
+        if (!follower.isTeleopDrive()) follower.startTeleOpDrive();
+        follower.setTeleOpDrive(forward, strafe, turn);
+    }
+
+    double getDistFromPoints(Pose start, Pose end) {
+        double xDiff = end.getX() - start.getX();
+        double yDiff = end.getY() - start.getY();
+        return abs(Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2)));
+    }
+
+    private final double BUMP_MIN_X = 47.75, BUMP_MIN_Y = 53, BUMP_MAX_X = 96.25, BUMP_MAX_Y = 91, MARGIN = 4.5;
+
+    public boolean isCloseToBump(Pose botPose){
+        for (Pose corner : getRobotCorners(botPose)) {
+            boolean withinX = (corner.getX() > (BUMP_MIN_X - MARGIN) && corner.getX() < (BUMP_MAX_X + MARGIN));
+            boolean withinY = (corner.getY() > (BUMP_MIN_Y - MARGIN) && corner.getY() < (BUMP_MAX_Y + MARGIN));
+            if (withinX && withinY) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    public Pose getClosestCorner(Pose botPose){
+        double minDist = 999999;
+        Pose closestPose = new Pose();
+        for (Pose corner : getRobotCorners(botPose)) {
+            boolean withinX = (botPose.getX() > BUMP_MIN_X - MARGIN && botPose.getX() < BUMP_MAX_X + MARGIN);
+            boolean withinY = (botPose.getY() > BUMP_MIN_Y - MARGIN && botPose.getY() < BUMP_MAX_Y + MARGIN);
+            double distToCenter = getDistFromPoints(corner, new Pose(72, 72, 0));
+            if (distToCenter < minDist) {
+                minDist = distToCenter;
+                closestPose = corner;
+            }
+        }
+        return closestPose;
+    }
+
+
 
 
 }

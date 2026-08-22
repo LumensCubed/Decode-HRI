@@ -77,14 +77,14 @@ public class BaseTeleOp extends CommandOpMode {
         if (gamepad1.aWasPressed()){
             schedule(robot.shooter.setClose(true));
         }
-        if (gamepad1.yWasPressed()){
-            schedule(robot.shooter.setClose(false));
-        }
+//        if (gamepad1.yWasPressed()){
+//            schedule(robot.shooter.setClose(false));
+//        }
 
-        //*slow mode (engineer)
-        if (gamepad2.aWasPressed()){
-            robot.slowDrive = !robot.slowDrive;
-        }
+//        //*slow mode (engineer)
+//        if (gamepad2.aWasPressed()){
+//            robot.slowDrive = !robot.slowDrive;
+//        }
         //*aim correction (engineer for now)
 //        if (gamepad2.bWasPressed()){
 //            schedule(robot.correctHeading);
