@@ -6,19 +6,16 @@ import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.commands.Commands.lazy;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
-import static com.pedropathing.ivy.groups.Groups.race;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.seattlesolvers.solverslib.util.MathUtils.normalizeAngle;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.min;
-import static java.lang.Math.toRadians;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.ivy.Command;
-import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.ivy.behaviors.BlockedBehavior;
 import com.pedropathing.ivy.behaviors.ConflictBehavior;
 import com.pedropathing.ivy.behaviors.InterruptedBehavior;
@@ -505,6 +502,7 @@ public class Robot {
 
     public void drive(double forward, double strafe,  double turn){
         Pose botPose = follower.getPose();
+        margin = 2 + abs((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity) * 9);
         if (false) {
             forward *= 0.2;
             strafe *= 0.2;
@@ -517,14 +515,14 @@ public class Robot {
             double y = movement.getYComponent();
 
             Pose corner = getClosestCorner(botPose);
-            if ((corner.getX() > (BUMP_MIN_X - MARGIN)) && (corner.getX() < BUMP_MIN_X)){
-                x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.08), x);
-            } else if (corner.getX() < (BUMP_MAX_X + MARGIN) && corner.getX() > BUMP_MAX_X) {
+            if ((corner.getX() > (BUMP_MIN_X - margin)) && (corner.getX() < BUMP_MIN_X)){
+                x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.05), x);
+            } else if (corner.getX() < (BUMP_MAX_X + margin) && corner.getX() > BUMP_MAX_X) {
                 x = 1;
             }
-            if (corner.getY() > (BUMP_MIN_Y - MARGIN) && corner.getY() < BUMP_MIN_Y){
+            if (corner.getY() > (BUMP_MIN_Y - margin) && corner.getY() < BUMP_MIN_Y){
                 y = -1;
-            } else if (corner.getY() < (BUMP_MAX_Y + MARGIN) && corner.getY() > BUMP_MAX_Y) {
+            } else if (corner.getY() < (BUMP_MAX_Y + margin) && corner.getY() > BUMP_MAX_Y) {
                 y = 1;
             }
             movement.setOrthogonalComponents(x, y);
@@ -541,12 +539,13 @@ public class Robot {
         return abs(Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2)));
     }
 
-    private final double BUMP_MIN_X = 47.75, BUMP_MIN_Y = 53, BUMP_MAX_X = 96.25, BUMP_MAX_Y = 91, MARGIN = 4.5;
+    private final double BUMP_MIN_X = 47.75, BUMP_MIN_Y = 53, BUMP_MAX_X = 96.25, BUMP_MAX_Y = 91;
+    public double margin = 2.5;
 
     public boolean isCloseToBump(Pose botPose){
         for (Pose corner : getRobotCorners(botPose)) {
-            boolean withinX = (corner.getX() > (BUMP_MIN_X - MARGIN) && corner.getX() < (BUMP_MAX_X + MARGIN));
-            boolean withinY = (corner.getY() > (BUMP_MIN_Y - MARGIN) && corner.getY() < (BUMP_MAX_Y + MARGIN));
+            boolean withinX = (corner.getX() > (BUMP_MIN_X - margin) && corner.getX() < (BUMP_MAX_X + margin));
+            boolean withinY = (corner.getY() > (BUMP_MIN_Y - margin) && corner.getY() < (BUMP_MAX_Y + margin));
             if (withinX && withinY) {
                 return true;
             }
@@ -559,8 +558,8 @@ public class Robot {
         double minDist = 999999;
         Pose closestPose = new Pose();
         for (Pose corner : getRobotCorners(botPose)) {
-            boolean withinX = (botPose.getX() > BUMP_MIN_X - MARGIN && botPose.getX() < BUMP_MAX_X + MARGIN);
-            boolean withinY = (botPose.getY() > BUMP_MIN_Y - MARGIN && botPose.getY() < BUMP_MAX_Y + MARGIN);
+            boolean withinX = (botPose.getX() > BUMP_MIN_X - margin && botPose.getX() < BUMP_MAX_X + margin);
+            boolean withinY = (botPose.getY() > BUMP_MIN_Y - margin && botPose.getY() < BUMP_MAX_Y + margin);
             double distToCenter = getDistFromPoints(corner, new Pose(72, 72, 0));
             if (distToCenter < minDist) {
                 minDist = distToCenter;

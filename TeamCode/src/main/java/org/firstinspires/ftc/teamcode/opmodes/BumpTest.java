@@ -63,7 +63,8 @@ public class BumpTest extends CommandOpMode{
 
         //*telemetry
         telemetry.addData("Pose: ", robot.follower.getPose());
-        telemetry.addData("angle: ", Math.toDegrees(robot.follower.getPose().getHeading()));
+        telemetry.addData("margin: ", robot.margin);
+        telemetry.addData("velocity: ", robot.follower.getVelocity().getMagnitude());
 
         super.loop(); //runs CommandOpMode's loop
     }
