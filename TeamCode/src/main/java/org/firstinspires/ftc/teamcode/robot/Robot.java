@@ -70,7 +70,7 @@ public class Robot {
     public Pose redHpz = new Pose(10.5, 10.5, 0);
     double forwardInput, rightInput, rotateInput = 0;
     public boolean isShooting = false;
-    public boolean slowDrive = true;
+    public boolean slowDrive = false;
     public static double headingKP = 0.02;
     public static double headingKI = 0;
     public static double headingKD = 0.02;
@@ -331,7 +331,7 @@ public class Robot {
             limelight.setPipeline(0);
         } else {
             goalPose = redGoal.mirror();
-            hpz = redHpz;//!.mirror();
+            hpz = redHpz.mirror();
             limelight.setPipeline(1);
         }
         follower.update();
@@ -505,7 +505,7 @@ public class Robot {
         Pose botPose = follower.getPose();
         xMargin = 3 + abs((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity) * 11);
         yMargin = 3 + abs((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity) * 11);
-        if (false) {
+        if (slowDrive) {
             forward *= 0.2;
             strafe *= 0.2;
             turn *= 0.2;
@@ -520,12 +520,12 @@ public class Robot {
             if ((corner.getX() > (BUMP_MIN_X - xMargin)) && (corner.getX() < BUMP_MIN_X)){
                 x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.05), x);
             } else if (corner.getX() < (BUMP_MAX_X + xMargin) && corner.getX() > BUMP_MAX_X) {
-                x = max(((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.05), x);
+                x = max(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.05), x);
             }
             if (corner.getY() > (BUMP_MIN_Y - yMargin) && corner.getY() < BUMP_MIN_Y){
                 y = min(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)+0.05), y);
             } else if (corner.getY() < (BUMP_MAX_Y + yMargin) && corner.getY() > BUMP_MAX_Y) {
-                y = max(((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)+0.05), y);
+                y = max(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)+0.05), y);
             }
             movement.setOrthogonalComponents(x, y);
             forward = getRobotRelativeMovement(movement, botPose.getHeading()).getXComponent();
