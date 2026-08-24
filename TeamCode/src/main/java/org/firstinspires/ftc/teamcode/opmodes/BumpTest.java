@@ -1,3 +1,5 @@
+
+
 package org.firstinspires.ftc.teamcode.opmodes;
 
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -36,6 +38,7 @@ public class BumpTest extends CommandOpMode{
     public void loop() {
         robot.update(gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
 
+        if (gamepad1.aWasPressed()) robot.slowDrive = !robot.slowDrive;
         //*telemetry
         telemetry.addData("Pose: ", robot.follower.getPose());
         telemetry.addData("x margin: ", robot.xMargin);
