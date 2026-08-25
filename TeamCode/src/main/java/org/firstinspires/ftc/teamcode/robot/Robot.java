@@ -510,22 +510,22 @@ public class Robot {
             strafe *= 0.2;
             turn *= 0.2;
         }
-        Pose[] corners = getRobotCorners(botPose);
         if (isCloseToBump(botPose)) {
+            double feedforward = abs(turn) > 0 ? 0.1 : 0.05; //make sure corners don't go past margins
             Vector movement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
             double x = movement.getXComponent();
             double y = movement.getYComponent();
 
             Pose corner = getClosestCorner(botPose);
             if ((corner.getX() > (BUMP_MIN_X - xMargin)) && (corner.getX() < BUMP_MIN_X)){
-                x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.05), x);
+                x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+feedforward), x);
             } else if (corner.getX() < (BUMP_MAX_X + xMargin) && corner.getX() > BUMP_MAX_X) {
-                x = max(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+0.05), x);
+                x = max(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)-feedforward), x);
             }
             if (corner.getY() > (BUMP_MIN_Y - yMargin) && corner.getY() < BUMP_MIN_Y){
-                y = min(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)+0.05), y);
+                y = min(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)+feedforward), y);
             } else if (corner.getY() < (BUMP_MAX_Y + yMargin) && corner.getY() > BUMP_MAX_Y) {
-                y = max(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)+0.05), y);
+                y = max(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)-feedforward), y);
             }
             movement.setOrthogonalComponents(x, y);
             forward = getRobotRelativeMovement(movement, botPose.getHeading()).getXComponent();

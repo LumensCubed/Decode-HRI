@@ -39,11 +39,16 @@ public class BumpTest extends CommandOpMode{
         robot.update(gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
 
         if (gamepad1.aWasPressed()) robot.slowDrive = !robot.slowDrive;
+        if (gamepad1.bWasPressed()) robot.follower.setPose(robot.hpz);
+
         //*telemetry
         telemetry.addData("Pose: ", robot.follower.getPose());
         telemetry.addData("x margin: ", robot.xMargin);
         telemetry.addData("y margin: ", robot.yMargin);
         telemetry.addData("velocity magnitude: ", robot.follower.getVelocity().getMagnitude());
+        telemetry.addData("angular magnitude: ", robot.follower.getAngularVelocity());
+
+        telemetry.addData("close to bump?: ", robot.isCloseToBump(robot.follower.getPose()));
 
         super.loop(); //runs CommandOpMode's loop
     }
