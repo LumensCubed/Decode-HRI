@@ -132,7 +132,7 @@ public class BaseTeleOp extends CommandOpMode {
         telemetry.addLine(robot.limelightAim ? "LIMELIGHT AIM" : "Odo Aim");
         telemetry.addData("ball amount: ", robot.beamBreaks.getBallCount());
         telemetry.addData("Pose: ", robot.follower.getPose());
-        telemetry.addData("Goal Pose: ", robot.goalPose);
+        telemetry.addData("Goal Pose: ", robot.realGoalPose);
         telemetry.addData("angle: ", Math.toDegrees(robot.follower.getPose().getHeading()));
         telemetry.addData("angle error: ", (robot.getOdoGoalAngleErrorDeg(false)));
         telemetry.addData("distance to goal: ", robot.getDistToGoal());
