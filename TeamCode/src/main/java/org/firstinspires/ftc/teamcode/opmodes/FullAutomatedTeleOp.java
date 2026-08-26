@@ -8,6 +8,8 @@ import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 import static com.pedropathing.ivy.pedro.PedroCommands.turnTo;
 import static com.seattlesolvers.solverslib.util.MathUtils.normalizeAngle;
 
+import static org.firstinspires.ftc.teamcode.Util.getAbsoluteAngleRad;
+import static org.firstinspires.ftc.teamcode.Util.getDistBetweenPoints;
 import static java.lang.Math.abs;
 
 import com.pedropathing.geometry.BezierLine;
@@ -80,7 +82,7 @@ public class FullAutomatedTeleOp extends CommandOpMode {
                         robot.follower.getPose(),
                         getClosestShootPose()
                 ))
-                .setLinearHeadingInterpolation(robot.follower.getHeading(), getHeadingToPointsRad(getClosestShootPose(), robot.goalPose))
+                .setLinearHeadingInterpolation(robot.follower.getHeading(), getAbsoluteAngleRad(getClosestShootPose(), robot.goalPose))
                 .build();
         return follow(robot.follower, robotPoseToShootingZone);
     }
@@ -109,22 +111,13 @@ public class FullAutomatedTeleOp extends CommandOpMode {
                 farPose = new Pose(farPose.getX() + ((redSide ? -1 : 1) * 0.5), (farPose.getY() <= 14 ? farPose.getY() : (farPose.getY() - 0.5)));
             }
         }
-        return (getDistFromPoints(currentPose, closePose) < getDistFromPoints(currentPose, farPose) ? closePose : farPose);
+        return (getDistBetweenPoints(currentPose, closePose) < getDistBetweenPoints(currentPose, farPose) ? closePose : farPose);
     }
     boolean poseInShootingZone(Pose pose){
         return (pose.getY() >= abs(pose.getX() - 72) + 65) || (pose.getY() <= -abs(pose.getX() - 72) + 31);
     }
-    double getDistFromPoints(Pose start, Pose end) {
-        double xDiff = end.getX() - start.getX();
-        double yDiff = end.getY() - start.getY();
-        return abs(Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2)));
-    }
-    public double getHeadingToPointsRad(Pose start, Pose end){
-        double xDiff = end.getX() - start.getX();
-        double yDiff = end.getY() - start.getY();
-        double angleFromCoords = Math.atan2(yDiff, xDiff);
-        return normalizeAngle(angleFromCoords, false, AngleUnit.RADIANS);
-    }
+
+
 
     @Override
     public void init() {
@@ -158,7 +151,7 @@ public class FullAutomatedTeleOp extends CommandOpMode {
         robot.update(gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
         if (robot.beamBreaks.getBallCount() == 3){
             if (poseInShootingZone(robot.follower.getPose())){
-                schedule(sequential(turnTo(robot.follower, getHeadingToPointsRad(robot.follower.getPose(), robot.goalPose)), robot.fastShoot, robot.localizeWithSmoothedLlPose));
+                schedule(sequential(turnTo(robot.follower, getAbsoluteAngleRad(robot.follower.getPose(), robot.goalPose)), robot.fastShoot, robot.localizeWithSmoothedLlPose));
             } else {
                 schedule(sequential(moveToClosestShootingZone, robot.fastShoot, robot.localizeWithSmoothedLlPose));
             }

@@ -8,7 +8,7 @@ import org.firstinspires.ftc.teamcode.PoseSaver;
 import org.firstinspires.ftc.teamcode.robot.Robot;
 
 @TeleOp
-public class BumpTest extends CommandOpMode{
+public class BumpTest extends CommandOpMode {
     private Robot robot = new Robot();
 
 

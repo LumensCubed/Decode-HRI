@@ -7,11 +7,14 @@ import static com.pedropathing.ivy.commands.Commands.lazy;
 import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import static com.pedropathing.ivy.groups.Groups.sequential;
+import static com.qualcomm.robotcore.util.Range.clip;
 import static com.seattlesolvers.solverslib.util.MathUtils.normalizeAngle;
 
+import static org.firstinspires.ftc.teamcode.Util.getDistBetweenPoints;
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.Math.sqrt;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
@@ -399,7 +402,7 @@ public class Robot {
 
     public double getAimingPIDFOutput(double angleErrorDeg) {
         PIDController headingPID = new PIDController(headingKP, headingKI, headingKD); //robot todo tune this
-        return -1 * (Range.clip((headingPID.calculate(angleErrorDeg) - headingKF * Math.signum(angleErrorDeg)), -1, 1));
+        return -1 * (clip((headingPID.calculate(angleErrorDeg) - headingKF * Math.signum(angleErrorDeg)), -1, 1));
     }
 
     public Pose getSotmOffset(){
@@ -411,37 +414,8 @@ public class Robot {
         );
     }
 
-    //*Kalman filter stuff (not used)
 
-    double x = 0; // your initial state
-    double Q = 0.1; // your model covariance
-    double R = 0.4; // your sensor covariance
-    double p = 1; // your initial covariance guess
-    double K = 1; // your initial Kalman gain guess
-
-    double x_previous = x;
-    double p_previous = p;
-    double odoChange = 0;
-    double z = 0;
-    public Pose filteredOdoPose(Pose rawOdometryPose) {
-        odoChange = 1; // Ex: change in position from odometry.
-        x = x_previous + odoChange;
-
-        p = p_previous + Q;
-
-        K = p/(p + R);
-
-        z = 1; // Pose Estimate from April Tag / Distance Sensor
-
-        x = x + K * (z - x);
-
-        p = (1 - K) * p;
-
-        x_previous = x;
-        p_previous = p;
-        return new Pose();
-    }
-
+    @Deprecated
     public Pose[] getRobotCorners(Pose robotPose) {
         double half = 9.0; // half of 18 inches
         double x = robotPose.getX();
@@ -501,6 +475,7 @@ public class Robot {
         return local;
     }
 
+    //TODO make small zero margin outside of FF margin
     public void drive(double forward, double strafe,  double turn){
         Pose botPose = follower.getPose();
         xMargin = 3 + abs((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity) * 11);
@@ -511,20 +486,20 @@ public class Robot {
             turn *= 0.2;
         }
         if (isCloseToBump(botPose)) {
-            double feedforward = abs(turn) > 0 ? 0.1 : 0.05; //make sure corners don't go past margins
+            double feedforward = 0; //todo add separate margins here
             Vector movement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
             double x = movement.getXComponent();
             double y = movement.getYComponent();
 
-            Pose corner = getClosestCorner(botPose);
-            if ((corner.getX() > (BUMP_MIN_X - xMargin)) && (corner.getX() < BUMP_MIN_X)){
+            Pose closestPose = getClosestPose(botPose);
+            if ((closestPose.getX() > (BUMP_MIN_X - xMargin)) && (closestPose.getX() < BUMP_MIN_X)){
                 x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)+feedforward), x);
-            } else if (corner.getX() < (BUMP_MAX_X + xMargin) && corner.getX() > BUMP_MAX_X) {
+            } else if (closestPose.getX() < (BUMP_MAX_X + xMargin) && closestPose.getX() > BUMP_MAX_X) {
                 x = max(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*4)-feedforward), x);
             }
-            if (corner.getY() > (BUMP_MIN_Y - yMargin) && corner.getY() < BUMP_MIN_Y){
+            if (closestPose.getY() > (BUMP_MIN_Y - yMargin) && closestPose.getY() < BUMP_MIN_Y){
                 y = min(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)+feedforward), y);
-            } else if (corner.getY() < (BUMP_MAX_Y + yMargin) && corner.getY() > BUMP_MAX_Y) {
+            } else if (closestPose.getY() < (BUMP_MAX_Y + yMargin) && closestPose.getY() > BUMP_MAX_Y) {
                 y = max(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*4)-feedforward), y);
             }
             movement.setOrthogonalComponents(x, y);
@@ -535,34 +510,33 @@ public class Robot {
         follower.setTeleOpDrive(forward, strafe, turn);
     }
 
-    double getDistFromPoints(Pose start, Pose end) {
-        double xDiff = end.getX() - start.getX();
-        double yDiff = end.getY() - start.getY();
-        return abs(Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2)));
-    }
+    private final double BUMP_MIN_X = 47.75, BUMP_MIN_Y = 53, BUMP_MAX_X = 96.25, BUMP_MAX_Y = 91,
+            ROBOT_LENGTH = 18, ROBOT_WIDTH = 18,
+            ROBOT_RADIUS = sqrt((ROBOT_LENGTH*ROBOT_LENGTH) + (ROBOT_WIDTH*ROBOT_WIDTH));
 
-    private final double BUMP_MIN_X = 47.75, BUMP_MIN_Y = 53, BUMP_MAX_X = 96.25, BUMP_MAX_Y = 91;
     public double xMargin = 2.5, yMargin = 2.5;
 
-    public boolean isCloseToBump(Pose botPose){
-        for (Pose corner : getRobotCorners(botPose)) {
-            boolean withinX = (corner.getX() > (BUMP_MIN_X - xMargin) && corner.getX() < (BUMP_MAX_X + xMargin));
-            boolean withinY = (corner.getY() > (BUMP_MIN_Y - yMargin) && corner.getY() < (BUMP_MAX_Y + yMargin));
-            if (withinX && withinY) {
-                return true;
-            }
-        }
-        return false;
+    public Pose getClosestPose(Pose botPose){
+        double closestX = clip(botPose.getX(), BUMP_MIN_X - xMargin, BUMP_MAX_X + xMargin);
+        double closestY = clip(botPose.getY(), BUMP_MIN_Y - yMargin, BUMP_MAX_Y + yMargin);
+        return new Pose(closestX, closestY);
+    }
+    public boolean isCloseToBump(Pose botPose) {
+        double xDiff = botPose.getX() - getClosestPose(botPose).getX();
+        double yDiff = botPose.getY() - getClosestPose(botPose).getY();
+        double dist = Math.hypot(xDiff, yDiff);
+
+        return dist < ROBOT_RADIUS;
     }
 
-
+    @Deprecated
     public Pose getClosestCorner(Pose botPose){
         double minDist = 999999;
         Pose closestPose = new Pose();
         for (Pose corner : getRobotCorners(botPose)) {
             boolean withinX = (botPose.getX() > BUMP_MIN_X - xMargin && botPose.getX() < BUMP_MAX_X + xMargin);
             boolean withinY = (botPose.getY() > BUMP_MIN_Y - yMargin && botPose.getY() < BUMP_MAX_Y + yMargin);
-            double distToCenter = getDistFromPoints(corner, new Pose(72, 72, 0));
+            double distToCenter = getDistBetweenPoints(corner, new Pose(72, 72, 0));
             if (distToCenter < minDist) {
                 minDist = distToCenter;
                 closestPose = corner;
