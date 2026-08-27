@@ -2,6 +2,10 @@
 
 package org.firstinspires.ftc.teamcode.opmodes;
 
+import static org.firstinspires.ftc.teamcode.Util.getDistBetweenPoints;
+
+import static java.lang.Math.abs;
+
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.PoseSaver;
@@ -48,7 +52,11 @@ public class BumpTest extends CommandOpMode {
         telemetry.addData("velocity magnitude: ", robot.follower.getVelocity().getMagnitude());
         telemetry.addData("angular magnitude: ", robot.follower.getAngularVelocity());
 
-        telemetry.addData("close to bump?: ", robot.isCloseToBump(robot.follower.getPose()));
+        telemetry.addData("close to bump y", robot.withinBumpY(robot.follower.getPose()));
+        telemetry.addData("closest pose", robot.getClosestPose(robot.follower.getPose()));
+        telemetry.addData("potential collision pose?", robot.getPotentialCollisionPose(robot.follower.getPose()));
+        telemetry.addData("within Y?", robot.follower.getPose().getY() - (robot.BUMP_MAX_Y + robot.yMargin + robot.ROBOT_RADIUS));
+        //
 
         super.loop(); //runs CommandOpMode's loop
     }
