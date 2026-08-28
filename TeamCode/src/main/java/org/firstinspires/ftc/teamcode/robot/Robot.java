@@ -32,6 +32,8 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.Range;
 import com.seattlesolvers.solverslib.controller.PIDController;
+import com.skeletonarmy.marrow.zones.Point;
+import com.skeletonarmy.marrow.zones.PolygonZone;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.Util;
@@ -420,38 +422,6 @@ public class Robot {
     }
 
 
-    @Deprecated
-    public Pose[] getRobotCorners(Pose robotPose) {
-        double half = 9.0; // half of 18 inches
-        double x = robotPose.getX();
-        double y = robotPose.getY();
-        double heading = robotPose.getHeading();
-
-        // Corners relative to center, in robot-local frame (x forward, y left)
-        double[][] localCorners = {
-                { half,  half}, // front-left
-                { half, -half}, // front-right
-                {-half, -half}, // back-right
-                {-half,  half}  // back-left
-        };
-
-        Pose[] corners = new Pose[4];
-        double cos = Math.cos(heading);
-        double sin = Math.sin(heading);
-
-        for (int i = 0; i < 4; i++) {
-            double lx = localCorners[i][0];
-            double ly = localCorners[i][1];
-
-            // Rotate local offset into field frame
-            double fieldX = x + (lx * cos - ly * sin);
-            double fieldY = y + (lx * sin + ly * cos);
-
-            corners[i] = new Pose(fieldX, fieldY, heading);
-        }
-        return corners;
-    }
-
     public Vector getFieldRelativeMovement(double forward, double strafe, double heading) {
         double cos = Math.cos(heading);
         double sin = Math.sin(heading);
@@ -479,6 +449,8 @@ public class Robot {
         local.setOrthogonalComponents(localForward, localStrafe);
         return local;
     }
+
+    PolygonZone testSquare = new PolygonZone(new Point(72+30, 72), new Point(72+30, 72), new Point(72+30, 72), new Point(72+30, 72));
 
     private final double BUMP_MIN_X = 47.75;
     private final double BUMP_MIN_Y = 53;
@@ -539,43 +511,12 @@ public class Robot {
     }
 
 
-    public Pose getClosestPose(Pose botPose){
-        double closestX = clip(botPose.getX(), BUMP_MIN_X - xMargin, BUMP_MAX_X + xMargin);
-        double closestY = clip(botPose.getY(), BUMP_MIN_Y - yMargin, BUMP_MAX_Y + yMargin);
-        double theta = atan2(closestY - botPose.getY(), closestX - botPose.getX());
 
-        return new Pose(botPose.getX() + ROBOT_RADIUS * cos(theta), botPose.getY() + ROBOT_RADIUS * sin(theta));
-    }
+
     public Pose getPotentialCollisionPose(Pose botPose){
-        double closestX = clip(botPose.getX(), BUMP_MIN_X - xMargin, BUMP_MAX_X + xMargin);
-        double closestY = clip(botPose.getY(), BUMP_MIN_Y - yMargin, BUMP_MAX_Y + yMargin);
-        return new Pose(closestX, closestY);
-    }
-    public boolean withinBumpX(Pose botPose) {
-        return botPose.getX() > BUMP_MIN_X - xMargin - ROBOT_RADIUS && botPose.getX() < BUMP_MAX_X + xMargin + ROBOT_RADIUS;
-    }
-    public boolean withinBumpY(Pose botPose) {
-        return botPose.getY() > BUMP_MIN_Y - yMargin - ROBOT_RADIUS && botPose.getY() < BUMP_MAX_Y + yMargin + ROBOT_RADIUS;
-    }
-    public boolean withinMargin(Pose botPose) {
-        return getDistBetweenPoints(botPose, getPotentialCollisionPose(botPose)) < ROBOT_RADIUS;
+
     }
 
-    @Deprecated
-    public Pose getClosestCorner(Pose botPose){
-        double minDist = 999999;
-        Pose closestPose = new Pose();
-        for (Pose corner : getRobotCorners(botPose)) {
-            boolean withinX = (botPose.getX() > BUMP_MIN_X - xMargin && botPose.getX() < BUMP_MAX_X + xMargin);
-            boolean withinY = (botPose.getY() > BUMP_MIN_Y - yMargin && botPose.getY() < BUMP_MAX_Y + yMargin);
-            double distToCenter = getDistBetweenPoints(corner, new Pose(72, 72, 0));
-            if (distToCenter < minDist) {
-                minDist = distToCenter;
-                closestPose = corner;
-            }
-        }
-        return closestPose;
-    }
 
 
 

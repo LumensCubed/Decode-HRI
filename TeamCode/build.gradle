@@ -71,6 +71,8 @@ dependencies {
     implementation "org.solverslib:pedroPathing:0.3.4" // pedroPathing
     //    implementation "org.solverslib:photon:0.3.4" // photon is optional (see docs for more info)
 
+    implementation 'com.skeletonarmyftc.marrow:core:1.1.2'
+
     // Swapped to Sloth-compatible FTC Dashboard
     implementation "com.acmerobotics.slothboard:dashboard:0.2.4+0.5.1"
 
