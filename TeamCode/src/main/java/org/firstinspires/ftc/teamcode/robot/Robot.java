@@ -32,6 +32,7 @@ import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.Range;
 import com.seattlesolvers.solverslib.controller.PIDController;
+import com.skeletonarmy.marrow.zones.CircleZone;
 import com.skeletonarmy.marrow.zones.Point;
 import com.skeletonarmy.marrow.zones.PolygonZone;
 
@@ -450,22 +451,36 @@ public class Robot {
         return local;
     }
 
-    PolygonZone testSquare = new PolygonZone(new Point(72+30, 72), new Point(72+30, 72), new Point(72+30, 72), new Point(72+30, 72));
 
-    private final double BUMP_MIN_X = 47.75;
-    private final double BUMP_MIN_Y = 53;
-    private final double BUMP_MAX_X = 96.25;
-    public final double BUMP_MAX_Y = 91;
+
     private final double ROBOT_LENGTH = 18;
     private final double ROBOT_WIDTH = 18;
+    public final double SAFETY_MARGIN = 3;
     public final double ROBOT_RADIUS = sqrt(((ROBOT_LENGTH/2)*(ROBOT_LENGTH/2)) + ((ROBOT_WIDTH/2)*(ROBOT_WIDTH/2)));
-    private final double MAX_VELOCITY = 90; //todo tune this
+    public final double MAX_VELOCITY = 75; //max reachable without hitting a wall
+    public final double DECEL_DIST = 13.6;
+    public final double DECEL_COEFF = 10; //todo tune
+    Point p1 = new Point(72+30, 72);
+    Point p2 = new Point(72, 72+30);
+    Point p3 = new Point(72-30, 72);
+    Point p4 = new Point(72, 72-30);
+    PolygonZone testSquare = new PolygonZone(p1, p2, p3, p4);
+    PolygonZone line12 = new PolygonZone(p1, p2, 0.1);
+    PolygonZone line23 = new PolygonZone(p1, p2, 0.1);
+    PolygonZone line34 = new PolygonZone(p1, p2, 0.1);
+    PolygonZone line41 = new PolygonZone(p1, p2, 0.1);
+    CircleZone robotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
+    CircleZone predictedRobotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
 
     public double xMargin = 3, yMargin = 3;
 
     //TODO make small zero margin outside of FF margin
     public void drive(double forward, double strafe, double turn) {
         Pose botPose = follower.getPose();
+        robotMax.setPosition(botPose.getX(), botPose.getY());
+        predictedRobotMax.setPosition(botPose.getX()-getPredictedOffset().getX(),
+                botPose.getY()-getPredictedOffset().getY());
+
         xMargin = 3 + abs((follower.getVelocity().getXComponent() / MAX_VELOCITY) * 15);
         yMargin = 3 + abs((follower.getVelocity().getYComponent() / MAX_VELOCITY) * 15);
         if (slowDrive) {
@@ -474,37 +489,37 @@ public class Robot {
             turn *= 0.2;
         }
 
-        Vector movement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
-        double x = movement.getXComponent();
-        double y = movement.getYComponent();
-
-        if (withinMargin(botPose)) {
-            Pose collisionPose = getPotentialCollisionPose(botPose);
-
-            // True only if the robot is actually outside the bump's Y-range (approaching top/bottom)
-            boolean yEdgeCase = collisionPose.getY() != botPose.getY();
-            // True only if the robot is actually outside the bump's X-range (approaching left/right)
-            boolean xEdgeCase = collisionPose.getX() != botPose.getX();
-
-            if (yEdgeCase) {
-                if (botPose.getY() < (BUMP_MIN_Y + BUMP_MAX_Y) / 2) {
-                    y = min(y, -follower.getVelocity().getYComponent() / MAX_VELOCITY);
-                } else {
-                    y = max(y, -follower.getVelocity().getYComponent() / MAX_VELOCITY);
-                }
-            }
-            if (xEdgeCase) {
-                if (botPose.getX() < (BUMP_MIN_X + BUMP_MAX_X) / 2) {
-                    x = min(x, -follower.getVelocity().getXComponent() / MAX_VELOCITY);
-                } else {
-                    x = max(x, -follower.getVelocity().getXComponent() / MAX_VELOCITY);
-                }
-            }
+        Vector fieldRelMovement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
+        double newX = 0, newY = 0;
+        if (robotMax.isInside(line12) || predictedRobotMax.isInside(line12)){
+            newX += follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
+            newY += follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
         }
-
-        movement.setOrthogonalComponents(x, y);
-        forward = getRobotRelativeMovement(movement, botPose.getHeading()).getXComponent();
-        strafe = getRobotRelativeMovement(movement, botPose.getHeading()).getYComponent();
+        if (robotMax.isInside(line23) || predictedRobotMax.isInside(line23)){
+            newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
+            newY += follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+        }
+        if (robotMax.isInside(line34) || predictedRobotMax.isInside(line34)){
+            newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
+            newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+        }
+        if (robotMax.isInside(line41) || predictedRobotMax.isInside(line41)){
+            newX += follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
+            newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+        }
+        fieldRelMovement.setOrthogonalComponents(
+                newX < 0
+                        ? min(fieldRelMovement.getXComponent(), newX)
+                        : max(fieldRelMovement.getXComponent(), newX),
+                newY < 0
+                        ? min(fieldRelMovement.getYComponent(), newY)
+                        : max(fieldRelMovement.getYComponent(), newY));
+        Vector botRelMovement = getFieldRelativeMovement(
+                fieldRelMovement.getYComponent(),
+                fieldRelMovement.getXComponent(),
+                botPose.getHeading());
+        forward = botRelMovement.getYComponent();
+        strafe = botRelMovement.getXComponent();
 
         if (!follower.isTeleopDrive()) follower.startTeleOpDrive();
         follower.setTeleOpDrive(forward, strafe, turn);
@@ -513,8 +528,9 @@ public class Robot {
 
 
 
-    public Pose getPotentialCollisionPose(Pose botPose){
-
+    public Pose getPredictedOffset(){
+        return new Pose(follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_DIST,
+                follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_DIST);
     }
 
 

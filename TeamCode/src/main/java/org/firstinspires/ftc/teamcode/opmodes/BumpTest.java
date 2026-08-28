@@ -25,7 +25,7 @@ public class BumpTest extends CommandOpMode {
             robot.follower.setStartingPose(robot.hpz);
         }
         PoseSaver.autoWasRun = false;
-
+        telemetry.setMsTransmissionInterval(1);
         reset();
     }
 
@@ -52,11 +52,11 @@ public class BumpTest extends CommandOpMode {
         telemetry.addData("velocity magnitude: ", robot.follower.getVelocity().getMagnitude());
         telemetry.addData("angular magnitude: ", robot.follower.getAngularVelocity());
 
-        telemetry.addData("close to bump y", robot.withinBumpY(robot.follower.getPose()));
-        telemetry.addData("closest pose", robot.getClosestPose(robot.follower.getPose()));
-        telemetry.addData("potential collision pose?", robot.getPotentialCollisionPose(robot.follower.getPose()));
-        telemetry.addData("within Y?", robot.follower.getPose().getY() - (robot.BUMP_MAX_Y + robot.yMargin + robot.ROBOT_RADIUS));
-        //
+//        telemetry.addData("close to bump y", robot.withinBumpY(robot.follower.getPose()));
+//        telemetry.addData("closest pose", robot.getClosestPose(robot.follower.getPose()));
+//        telemetry.addData("potential collision pose?", robot.getPotentialCollisionPose(robot.follower.getPose()));
+//        telemetry.addData("within Y?", robot.follower.getPose().getY() - (robot.BUMP_MAX_Y + robot.yMargin + robot.ROBOT_RADIUS));
+//        //
 
         super.loop(); //runs CommandOpMode's loop
     }
