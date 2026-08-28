@@ -487,7 +487,6 @@ public class Robot {
     private final double ROBOT_LENGTH = 18;
     private final double ROBOT_WIDTH = 18;
     public final double ROBOT_RADIUS = sqrt(((ROBOT_LENGTH/2)*(ROBOT_LENGTH/2)) + ((ROBOT_WIDTH/2)*(ROBOT_WIDTH/2)));
-    private final double ROBOT_RADIUS_2 = 9*sqrt(2);
     private final double MAX_VELOCITY = 90; //todo tune this
 
     public double xMargin = 3, yMargin = 3;
@@ -503,33 +502,34 @@ public class Robot {
             turn *= 0.2;
         }
 
-        double xFeedforward = 0, yFeedforward = 0; //todo add separate margins here
         Vector movement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
         double x = movement.getXComponent();
         double y = movement.getYComponent();
 
+        if (withinMargin(botPose)) {
+            Pose collisionPose = getPotentialCollisionPose(botPose);
 
-        if (withinMargin(botPose)){
-            if (withinBumpY(getPotentialCollisionPose(botPose)) && withinBumpX(botPose)){
-                if (botPose.getY() < 72) {
+            // True only if the robot is actually outside the bump's Y-range (approaching top/bottom)
+            boolean yEdgeCase = collisionPose.getY() != botPose.getY();
+            // True only if the robot is actually outside the bump's X-range (approaching left/right)
+            boolean xEdgeCase = collisionPose.getX() != botPose.getX();
+
+            if (yEdgeCase) {
+                if (botPose.getY() < (BUMP_MIN_Y + BUMP_MAX_Y) / 2) {
                     y = min(y, -follower.getVelocity().getYComponent() / MAX_VELOCITY);
                 } else {
                     y = max(y, -follower.getVelocity().getYComponent() / MAX_VELOCITY);
                 }
             }
+            if (xEdgeCase) {
+                if (botPose.getX() < (BUMP_MIN_X + BUMP_MAX_X) / 2) {
+                    x = min(x, -follower.getVelocity().getXComponent() / MAX_VELOCITY);
+                } else {
+                    x = max(x, -follower.getVelocity().getXComponent() / MAX_VELOCITY);
+                }
+            }
         }
-//            if ((closestPose.getX() > (BUMP_MIN_X - xMargin)) && (closestPose.getX() < BUMP_MIN_X)){
-////                if ((closestPose.getX() - (BUMP_MIN_X - xMargin)) < 0.5) xFeedforward = 0;
-//                x = min(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*3)+xFeedforward), x);
-//            } else if (closestPose.getX() < (BUMP_MAX_X + xMargin) && closestPose.getX() > BUMP_MAX_X) {
-////                if ((closestPose.getX() - (BUMP_MIN_X - xMargin)) > 0.5) xFeedforward = 0;
-//                x = max(-((follower.getVelocity().getXComponent()/Constants.driveConstants.xVelocity*3)-xFeedforward), x);
-//            }
-//            if (closestPose.getY() > (BUMP_MIN_Y - yMargin) && closestPose.getY() < BUMP_MIN_Y){
-//                y = min(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*3)+yFeedforward), y);
-//            } else if (closestPose.getY() < (BUMP_MAX_Y + yMargin) && closestPose.getY() > BUMP_MAX_Y) {
-//                y = max(-((follower.getVelocity().getYComponent()/Constants.driveConstants.xVelocity*3)-yFeedforward), y);
-//            }
+
         movement.setOrthogonalComponents(x, y);
         forward = getRobotRelativeMovement(movement, botPose.getHeading()).getXComponent();
         strafe = getRobotRelativeMovement(movement, botPose.getHeading()).getYComponent();
@@ -539,12 +539,12 @@ public class Robot {
     }
 
 
-    public Pose getClosestPose(Pose botPose){ //!Wrong
+    public Pose getClosestPose(Pose botPose){
         double closestX = clip(botPose.getX(), BUMP_MIN_X - xMargin, BUMP_MAX_X + xMargin);
         double closestY = clip(botPose.getY(), BUMP_MIN_Y - yMargin, BUMP_MAX_Y + yMargin);
         double theta = atan2(closestY - botPose.getY(), closestX - botPose.getX());
 
-        return new Pose(botPose.getX() + ROBOT_RADIUS_2 * cos(theta), botPose.getY() + ROBOT_RADIUS_2 * sin(theta));
+        return new Pose(botPose.getX() + ROBOT_RADIUS * cos(theta), botPose.getY() + ROBOT_RADIUS * sin(theta));
     }
     public Pose getPotentialCollisionPose(Pose botPose){
         double closestX = clip(botPose.getX(), BUMP_MIN_X - xMargin, BUMP_MAX_X + xMargin);
@@ -554,13 +554,12 @@ public class Robot {
     public boolean withinBumpX(Pose botPose) {
         return botPose.getX() > BUMP_MIN_X - xMargin - ROBOT_RADIUS && botPose.getX() < BUMP_MAX_X + xMargin + ROBOT_RADIUS;
     }
-    public boolean withinBumpY(Pose collisionPose) {
-        return collisionPose.getY() >= BUMP_MIN_Y - yMargin && collisionPose.getY() <= BUMP_MAX_Y + yMargin;
+    public boolean withinBumpY(Pose botPose) {
+        return botPose.getY() > BUMP_MIN_Y - yMargin - ROBOT_RADIUS && botPose.getY() < BUMP_MAX_Y + yMargin + ROBOT_RADIUS;
     }
     public boolean withinMargin(Pose botPose) {
         return getDistBetweenPoints(botPose, getPotentialCollisionPose(botPose)) < ROBOT_RADIUS;
     }
-
 
     @Deprecated
     public Pose getClosestCorner(Pose botPose){
