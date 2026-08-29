@@ -465,12 +465,12 @@ public class Robot {
     Point p3 = new Point(72-30, 72);
     Point p4 = new Point(72, 72-30);
     PolygonZone testSquare = new PolygonZone(p1, p2, p3, p4);
-    PolygonZone line12 = new PolygonZone(p1, p2, 0.1);
-    PolygonZone line23 = new PolygonZone(p1, p2, 0.1);
-    PolygonZone line34 = new PolygonZone(p1, p2, 0.1);
-    PolygonZone line41 = new PolygonZone(p1, p2, 0.1);
-    CircleZone robotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
-    CircleZone predictedRobotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
+    public PolygonZone line12 = new PolygonZone(p1, p2, 0.1);
+    PolygonZone line23 = new PolygonZone(p2, p3, 0.1);
+    PolygonZone line34 = new PolygonZone(p3, p4, 0.1);
+    PolygonZone line41 = new PolygonZone(p4, p2, 0.1);
+    public CircleZone robotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
+    public CircleZone predictedRobotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
 
     public double xMargin = 3, yMargin = 3;
 
@@ -478,8 +478,8 @@ public class Robot {
     public void drive(double forward, double strafe, double turn) {
         Pose botPose = follower.getPose();
         robotMax.setPosition(botPose.getX(), botPose.getY());
-        predictedRobotMax.setPosition(botPose.getX()-getPredictedOffset().getX(),
-                botPose.getY()-getPredictedOffset().getY());
+        predictedRobotMax.setPosition(botPose.getX() - getPredictedOffset().getX(),
+                botPose.getY() - getPredictedOffset().getY());
 
         xMargin = 3 + abs((follower.getVelocity().getXComponent() / MAX_VELOCITY) * 15);
         yMargin = 3 + abs((follower.getVelocity().getYComponent() / MAX_VELOCITY) * 15);
@@ -491,29 +491,36 @@ public class Robot {
 
         Vector fieldRelMovement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
         double newX = 0, newY = 0;
-        if (robotMax.isInside(line12) || predictedRobotMax.isInside(line12)){
-            newX += follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
-            newY += follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+        if ((robotMax.isInside(line12) || predictedRobotMax.isInside(line12))) {
+            newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
+            newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
         }
-        if (robotMax.isInside(line23) || predictedRobotMax.isInside(line23)){
+        if (robotMax.isInside(line23) || predictedRobotMax.isInside(line23)) {
             newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
             newY += follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
         }
-        if (robotMax.isInside(line34) || predictedRobotMax.isInside(line34)){
+        if (robotMax.isInside(line34) || predictedRobotMax.isInside(line34)) {
             newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
             newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
         }
-        if (robotMax.isInside(line41) || predictedRobotMax.isInside(line41)){
+        if (robotMax.isInside(line41) || predictedRobotMax.isInside(line41)) {
             newX += follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
             newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
         }
-        fieldRelMovement.setOrthogonalComponents(
-                newX < 0
-                        ? min(fieldRelMovement.getXComponent(), newX)
-                        : max(fieldRelMovement.getXComponent(), newX),
-                newY < 0
-                        ? min(fieldRelMovement.getYComponent(), newY)
-                        : max(fieldRelMovement.getYComponent(), newY));
+        if (newX != 0){
+            fieldRelMovement.setOrthogonalComponents(
+                    newX < 0
+                            ? min(fieldRelMovement.getXComponent(), newX)
+                            : max(fieldRelMovement.getXComponent(), newX),
+                    fieldRelMovement.getYComponent());
+        }
+        if (newY != 0){
+            fieldRelMovement.setOrthogonalComponents(
+                    fieldRelMovement.getXComponent(),
+                    newY < 0
+                    ? min(fieldRelMovement.getYComponent(), newY)
+                    : max(fieldRelMovement.getYComponent(), newY));
+        }
         Vector botRelMovement = getFieldRelativeMovement(
                 fieldRelMovement.getYComponent(),
                 fieldRelMovement.getXComponent(),
