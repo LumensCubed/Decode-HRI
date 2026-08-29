@@ -18,7 +18,7 @@ public class BumpTest extends CommandOpMode {
 
     @Override
     public void init() {
-        robot.initialize(false, hardwareMap);
+        robot.initialize(true, hardwareMap);
         if (PoseSaver.autoWasRun) {
             robot.follower.setStartingPose(PoseSaver.endPose);
         } else {
@@ -49,8 +49,10 @@ public class BumpTest extends CommandOpMode {
         telemetry.addData("velocity magnitude: ", robot.follower.getVelocity().getMagnitude());
         telemetry.addData("angular magnitude: ", robot.follower.getAngularVelocity());
         telemetry.addData("normal pos", robot.robotMax.getPosition());
-        telemetry.addData("predicted pos", robot.robotMax.getPosition());
+        telemetry.addData("predicted pos", robot.predictedRobotMax.getPosition());
+        telemetry.addData("pos diff", robot.robotMax.getPosition().distanceTo(robot.predictedRobotMax.getPosition()));
         telemetry.addData("inside line 1-2", robot.robotMax.isInside(robot.line12) || robot.predictedRobotMax.isInside(robot.line12));
+
 
 
         super.loop(); //runs CommandOpMode's loop

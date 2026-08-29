@@ -458,7 +458,7 @@ public class Robot {
     public final double SAFETY_MARGIN = 3;
     public final double ROBOT_RADIUS = sqrt(((ROBOT_LENGTH/2)*(ROBOT_LENGTH/2)) + ((ROBOT_WIDTH/2)*(ROBOT_WIDTH/2)));
     public final double MAX_VELOCITY = 75; //max reachable without hitting a wall
-    public final double DECEL_DIST = 13.6;
+    public final double DECEL_DIST = -13.6;
     public final double DECEL_COEFF = 10; //todo tune
     Point p1 = new Point(72+30, 72);
     Point p2 = new Point(72, 72+30);
@@ -495,17 +495,20 @@ public class Robot {
             newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
             newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
         }
-        if (robotMax.isInside(line23) || predictedRobotMax.isInside(line23)) {
-            newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
-            newY += follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+
+        if ((robotMax.isInside(line23) || predictedRobotMax.isInside(line23))) {
+            newX += min((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), -0.1);
+            newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
         }
-        if (robotMax.isInside(line34) || predictedRobotMax.isInside(line34)) {
-            newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
-            newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+
+        if ((robotMax.isInside(line34) || predictedRobotMax.isInside(line34))) {
+            newX += min((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), -0.1);
+            newY += min((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), -0.1);
         }
-        if (robotMax.isInside(line41) || predictedRobotMax.isInside(line41)) {
-            newX += follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
-            newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+
+        if ((robotMax.isInside(line41) || predictedRobotMax.isInside(line41))) {
+            newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
+            newY += min((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), -0.1);
         }
         if (newX != 0){
             fieldRelMovement.setOrthogonalComponents(
