@@ -460,17 +460,20 @@ public class Robot {
     public final double MAX_VELOCITY = 75; //max reachable without hitting a wall
     public final double DECEL_DIST = 13.6;
     public final double DECEL_COEFF = 10; //todo tune
-    Point p1 = new Point(72+30, 72);
-    Point p2 = new Point(72, 72+30);
-    Point p3 = new Point(72-30, 72);
-    Point p4 = new Point(72, 72-30);
-    PolygonZone testSquare = new PolygonZone(p1, p2, p3, p4);
-    public PolygonZone line12 = new PolygonZone(p1, p2, 0.1);
-    PolygonZone line23 = new PolygonZone(p2, p3, 0.1);
-    PolygonZone line34 = new PolygonZone(p3, p4, 0.1);
-    PolygonZone line41 = new PolygonZone(p4, p2, 0.1);
+    Point pointA = new Point(72+30, 72);
+    Point pointB = new Point(72, 72+30);
+    Point pointC = new Point(72-30, 72);
+    Point pointD = new Point(72, 72-30);
+    PolygonZone testSquare = new PolygonZone(pointA, pointB, pointC, pointD);
+    public PolygonZone lineAB = new PolygonZone(pointA, pointB, 0.1);
+    PolygonZone lineBC = new PolygonZone(pointB, pointC, 0.1);
+    PolygonZone lineCD = new PolygonZone(pointC, pointD, 0.1);
+    PolygonZone lineDA = new PolygonZone(pointD, pointB, 0.1);
     public CircleZone robotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
     public CircleZone predictedRobotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
+    private final double kS = 0.03; //static friction
+    private final double kP = 0.05;
+
 
     public double xMargin = 3, yMargin = 3;
 
@@ -478,8 +481,8 @@ public class Robot {
     public void drive(double forward, double strafe, double turn) {
         Pose botPose = follower.getPose();
         robotMax.setPosition(botPose.getX(), botPose.getY());
-        predictedRobotMax.setPosition(botPose.getX() - getPredictedOffset().getX(),
-                botPose.getY() - getPredictedOffset().getY());
+        predictedRobotMax.setPosition(botPose.getX() + getPredictedOffset().getX(),
+                botPose.getY() + getPredictedOffset().getY());
 
         xMargin = 3 + abs((follower.getVelocity().getXComponent() / MAX_VELOCITY) * 15);
         yMargin = 3 + abs((follower.getVelocity().getYComponent() / MAX_VELOCITY) * 15);
@@ -491,19 +494,19 @@ public class Robot {
 
         Vector fieldRelMovement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
         double newX = 0, newY = 0;
-        if ((robotMax.isInside(line12) || predictedRobotMax.isInside(line12))) {
-            newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
-            newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), 0.1);
+        if ((robotMax.isInside(lineAB) || predictedRobotMax.isInside(lineAB))) {
+            newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), kS + (kP * getDistToEdge(botPose, 1));
+            newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), kS + (kP * getDistToEdge(botPose, 1));
         }
-        if (robotMax.isInside(line23) || predictedRobotMax.isInside(line23)) {
+        if (robotMax.isInside(lineBC) || predictedRobotMax.isInside(lineBC)) {
             newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
             newY += follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
         }
-        if (robotMax.isInside(line34) || predictedRobotMax.isInside(line34)) {
+        if (robotMax.isInside(lineCD) || predictedRobotMax.isInside(lineCD)) {
             newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
             newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
         }
-        if (robotMax.isInside(line41) || predictedRobotMax.isInside(line41)) {
+        if (robotMax.isInside(lineDA) || predictedRobotMax.isInside(lineDA)) {
             newX += follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
             newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
         }
@@ -538,6 +541,11 @@ public class Robot {
     public Pose getPredictedOffset(){
         return new Pose(follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_DIST,
                 follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_DIST);
+    }
+
+    public double getDistToEdge(Pose botPose, int side){
+        //get vector projection point based on side (switch?)
+        return 0;
     }
 
 
