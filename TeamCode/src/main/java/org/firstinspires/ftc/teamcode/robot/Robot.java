@@ -10,14 +10,9 @@ import static com.pedropathing.ivy.groups.Groups.sequential;
 import static com.qualcomm.robotcore.util.Range.clip;
 import static com.seattlesolvers.solverslib.util.MathUtils.normalizeAngle;
 
-import static org.firstinspires.ftc.teamcode.Util.getDistBetweenPoints;
 import static java.lang.Math.abs;
-import static java.lang.Math.atan2;
-import static java.lang.Math.cos;
-import static java.lang.Math.hypot;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-import static java.lang.Math.sin;
 import static java.lang.Math.sqrt;
 
 import com.bylazar.configurables.annotations.Configurable;
@@ -30,14 +25,12 @@ import com.pedropathing.ivy.behaviors.InterruptedBehavior;
 import com.pedropathing.math.Vector;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.util.Range;
 import com.seattlesolvers.solverslib.controller.PIDController;
 import com.skeletonarmy.marrow.zones.CircleZone;
 import com.skeletonarmy.marrow.zones.Point;
 import com.skeletonarmy.marrow.zones.PolygonZone;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.Util;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.robot.subsystems.BeamBreaks;
 import org.firstinspires.ftc.teamcode.robot.subsystems.HuskyLens;
@@ -459,7 +452,7 @@ public class Robot {
     public final double ROBOT_RADIUS = sqrt(((ROBOT_LENGTH/2)*(ROBOT_LENGTH/2)) + ((ROBOT_WIDTH/2)*(ROBOT_WIDTH/2)));
     public final double MAX_VELOCITY = 75; //max reachable without hitting a wall
     public final double DECEL_DIST = 13.6;
-    public final double DECEL_COEFF = 10; //todo tune
+    public double decelCoeff = 10; //todo tune
     Point pointA = new Point(72+30, 72);
     Point pointB = new Point(72, 72+30);
     Point pointC = new Point(72-30, 72);
@@ -471,7 +464,7 @@ public class Robot {
     PolygonZone lineDA = new PolygonZone(pointD, pointB, 0.001);
     public CircleZone robotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
     public CircleZone predictedRobotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
-    private final double kS = 0.03; //static friction
+    private final double kS = 0.001; //static friction
     private final double kP = 0.05;
 
 
@@ -484,8 +477,8 @@ public class Robot {
         predictedRobotMax.setPosition(botPose.getX() + getPredictedOffset().getX(),
                 botPose.getY() + getPredictedOffset().getY());
 
-        xMargin = 3 + abs((follower.getVelocity().getXComponent() / MAX_VELOCITY) * 15);
-        yMargin = 3 + abs((follower.getVelocity().getYComponent() / MAX_VELOCITY) * 15);
+        decelCoeff = (follower.getVelocity().getMagnitude() < 10) ? 0 : 1;
+
         if (slowDrive) {
             forward *= 0.2;
             strafe *= 0.2;
@@ -494,22 +487,32 @@ public class Robot {
 
         Vector fieldRelMovement = getFieldRelativeMovement(forward, strafe, botPose.getHeading());
         double newX = 0, newY = 0;
+
         if ((robotMax.isInside(lineAB) || predictedRobotMax.isInside(lineAB))) {
-            newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF), kS + (kP * getDistToEdge(botPose, 1));
-            newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF), kS + (kP * getDistToEdge(botPose, 1));
+            newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * decelCoeff)
+                    + (kS + (kP * getDistToEdge(botPose, 1))), 0);
+            newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * decelCoeff)
+                    + (kS + (kP * getDistToEdge(botPose, 1))), 0);
         }
-        if (robotMax.isInside(lineBC) || predictedRobotMax.isInside(lineBC)) {
-            newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
-            newY += follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+        if ((robotMax.isInside(lineBC) || predictedRobotMax.isInside(lineBC))) {
+            newX += min((-follower.getVelocity().getXComponent() / MAX_VELOCITY * decelCoeff)
+                    - (kS + (kP * getDistToEdge(botPose, 2))), 0);
+            newY += max((-follower.getVelocity().getYComponent() / MAX_VELOCITY * decelCoeff)
+                    + (kS + (kP * getDistToEdge(botPose, 2))), 0);
         }
-        if (robotMax.isInside(lineCD) || predictedRobotMax.isInside(lineCD)) {
-            newX -= follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
-            newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+        if ((robotMax.isInside(lineCD) || predictedRobotMax.isInside(lineCD))) {
+            newX += min((-follower.getVelocity().getXComponent() / MAX_VELOCITY * decelCoeff)
+                    - (kS + (kP * getDistToEdge(botPose, 3))), 0);
+            newY += min((-follower.getVelocity().getYComponent() / MAX_VELOCITY * decelCoeff)
+                    - (kS + (kP * getDistToEdge(botPose, 3))), 0);
         }
-        if (robotMax.isInside(lineDA) || predictedRobotMax.isInside(lineDA)) {
-            newX += follower.getVelocity().getXComponent() / MAX_VELOCITY * DECEL_COEFF;
-            newY -= follower.getVelocity().getYComponent() / MAX_VELOCITY * DECEL_COEFF;
+        if ((robotMax.isInside(lineDA) || predictedRobotMax.isInside(lineDA))) {
+            newX += max((-follower.getVelocity().getXComponent() / MAX_VELOCITY * decelCoeff)
+                    + (kS + (kP * getDistToEdge(botPose, 4))), 0);
+            newY += min((-follower.getVelocity().getYComponent() / MAX_VELOCITY * decelCoeff)
+                    - (kS + (kP * getDistToEdge(botPose, 4))), 0);
         }
+
         if (newX != 0){
             fieldRelMovement.setOrthogonalComponents(
                     newX < 0
