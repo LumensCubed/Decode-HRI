@@ -465,10 +465,10 @@ public class Robot {
     Point pointC = new Point(72-30, 72);
     Point pointD = new Point(72, 72-30);
     PolygonZone testSquare = new PolygonZone(pointA, pointB, pointC, pointD);
-    public PolygonZone lineAB = new PolygonZone(pointA, pointB, 0.1);
-    PolygonZone lineBC = new PolygonZone(pointB, pointC, 0.1);
-    PolygonZone lineCD = new PolygonZone(pointC, pointD, 0.1);
-    PolygonZone lineDA = new PolygonZone(pointD, pointB, 0.1);
+    public PolygonZone lineAB = new PolygonZone(pointA, pointB, 0.001);
+    PolygonZone lineBC = new PolygonZone(pointB, pointC, 0.001);
+    PolygonZone lineCD = new PolygonZone(pointC, pointD, 0.001);
+    PolygonZone lineDA = new PolygonZone(pointD, pointB, 0.001);
     public CircleZone robotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
     public CircleZone predictedRobotMax = new CircleZone(ROBOT_RADIUS+SAFETY_MARGIN);
     private final double kS = 0.03; //static friction
