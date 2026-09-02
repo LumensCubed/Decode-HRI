@@ -10,18 +10,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 public class Util {
     /**
-     * Finds the distance between 2 Poses.
-     * @param start one of the poses
-     * @param end the other pose
-     * @return the distance between the 2 points in inches
-     */
-    public static double getDistBetweenPoints(Pose start, Pose end) {
-        double xDiff = end.getX() - start.getX();
-        double yDiff = end.getY() - start.getY();
-        return hypot(xDiff, yDiff);
-    }
-
-    /**
      * Finds the angle between 2 Poses, from pi to -pi.
      * @param start the first pose (e.g. center of a circle)
      * @param end the other pose (e.g. a point on the circle)
